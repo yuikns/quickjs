@@ -23,6 +23,7 @@ typedef struct {
 	JSContext *context;
 	int has_time_limit;
 	clock_t time_limit;
+	int allow_unsafe_py_with_limit;  // Allow Python callbacks even when time limit is set (unsafe)
 	// Used when releasing the GIL.
 	PyThreadState *thread_state;
 	InterruptData interrupt_data;
@@ -413,7 +414,7 @@ static JSValue js_python_function_call(JSContext *ctx, JSValueConst func_obj,
                                        int flags) {
 	RuntimeData *runtime_data = (RuntimeData *)JS_GetRuntimeOpaque(JS_GetRuntime(ctx));
 	PythonCallableNode *node = JS_GetOpaque(func_obj, js_python_function_class_id);
-	if (runtime_data->has_time_limit) {
+	if (runtime_data->has_time_limit && !runtime_data->allow_unsafe_py_with_limit) {
 		return JS_ThrowInternalError(ctx, "Can not call into Python with a time limit set.");
 	}
 	prepare_call_python(runtime_data);
@@ -481,6 +482,7 @@ static PyObject *runtime_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 		JS_FreeValue(self->context, global);
 		self->has_time_limit = 0;
 		self->time_limit = 0;
+		self->allow_unsafe_py_with_limit = 0;
 		self->thread_state = NULL;
 		self->python_callables = NULL;
 		JS_SetRuntimeOpaque(self->runtime, self);
@@ -625,6 +627,18 @@ static PyObject *runtime_set_time_limit(RuntimeData *self, PyObject *args) {
 		self->has_time_limit = 1;
 		self->time_limit = (clock_t)(limit * CLOCKS_PER_SEC);
 	}
+	Py_RETURN_NONE;
+}
+
+// _quickjs.Context.allow_unsafe_py_with_limit
+//
+// Allow Python callbacks even when time limit is set (unsafe).
+static PyObject *runtime_allow_unsafe_py_with_limit(RuntimeData *self, PyObject *args) {
+	int allow;
+	if (!PyArg_ParseTuple(args, "p", &allow)) {
+		return NULL;
+	}
+	self->allow_unsafe_py_with_limit = allow;
 	Py_RETURN_NONE;
 }
 
@@ -774,6 +788,10 @@ static PyMethodDef runtime_methods[] = {
      (PyCFunction)runtime_set_time_limit,
      METH_VARARGS,
      "Sets the CPU time limit in seconds (C function clock() is used)."},
+    {"allow_unsafe_py_with_limit",
+     (PyCFunction)runtime_allow_unsafe_py_with_limit,
+     METH_VARARGS,
+     "Allow Python callbacks even when time limit is set (unsafe)."},
     {"set_max_stack_size",
      (PyCFunction)runtime_set_max_stack_size,
      METH_VARARGS,

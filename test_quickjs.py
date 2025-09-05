@@ -291,6 +291,36 @@ class CallIntoPython(unittest.TestCase):
         with self.assertRaises(quickjs.JSException):
             self.context.eval("f(40)")
 
+    def test_allow_unsafe_py_with_limit(self):
+        """Test that Python callbacks work with time limit when unsafe flag is set."""
+        self.context.add_callable("f", lambda x: x + 2)
+
+        # 1. Initial state: no time limit, should work
+        result = self.context.eval("f(40)")
+        self.assertEqual(result, 42)
+
+        # 2. Set time limit: should fail
+        self.context.set_time_limit(1000)
+        with self.assertRaises(quickjs.JSException) as cm:
+            self.context.eval("f(40)")
+        self.assertIn("Can not call into Python with a time limit set", str(cm.exception))
+
+        # 3. Enable unsafe flag: should work
+        self.context.allow_unsafe_py_with_limit(True)
+        result = self.context.eval("f(40)")
+        self.assertEqual(result, 42)
+
+        # 4. Disable unsafe flag: should fail again
+        self.context.allow_unsafe_py_with_limit(False)
+        with self.assertRaises(quickjs.JSException) as cm:
+            self.context.eval("f(40)")
+        self.assertIn("Can not call into Python with a time limit set", str(cm.exception))
+
+        # 5. Remove time limit: should work again
+        self.context.set_time_limit(-1)
+        result = self.context.eval("f(40)")
+        self.assertEqual(result, 42)
+
     def test_conversion_failure_does_not_raise_system_error(self):
         # https://github.com/PetterS/quickjs/issues/38
 

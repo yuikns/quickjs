@@ -53,6 +53,10 @@ class Function:
         with self._lock:
             return self._context.set_time_limit(limit)
 
+    def allow_unsafe_py_with_limit(self, allow):
+        with self._lock:
+            return self._context.allow_unsafe_py_with_limit(allow)
+
     def set_max_stack_size(self, limit):
         with self._lock:
             return self._context.set_max_stack_size(limit)
