@@ -10,13 +10,13 @@ on:
 
 env:
   PY_VERSIONS_STR: >-
-    ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    ["3.9", "3.10", "3.11", "3.12", "3.13"]
   VERSIONS_LINUX_STR: >-
-    ["manylinux2014", "manylinux_2_28"]
+    ["manylinux_2_28"]
   VERSIONS_MACOS_STR: >-
-    ["macos-11", "macos-12"]
+    ["macos-14", "macos-15"]
   VERSIONS_WINDOWS_STR: >-
-    ["windows-2022"]
+    []  # Windows builds disabled - require MinGW compiler setup
 
 
 jobs:
@@ -51,7 +51,7 @@ jobs:
     container:
       image: quay.io/pypa/${{ matrix.image-name }}_${{ matrix.image-arch }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - uses: ./.github/actions/setup-poetry
@@ -66,6 +66,8 @@ jobs:
           make-binary: true
           repair-manylinux: true
           manylinux-target: ${{ matrix.image-name}}_${{ matrix.image-arch }}
+          python-version: ${{ matrix.py-version }}
+          os-arch: ${{ matrix.image-arch }}
         if: ${{ fromJSON(needs.pass-env.outputs.is-from-tag-str) }}
   build-macos:
     needs: pass-env
@@ -76,10 +78,10 @@ jobs:
         py-version: ${{ fromJSON(needs.pass-env.outputs.py-versions-str) }}
     runs-on: ${{ matrix.arch }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.py-version }}
       - uses: ./.github/actions/setup-poetry
@@ -91,48 +93,21 @@ jobs:
       - uses: ./.github/actions/upload-artifacts
         with:
           make-binary: true
-        if: ${{ fromJSON(needs.pass-env.outputs.is-from-tag-str) }}
-  build-windows:
-    needs: pass-env
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: ${{ fromJSON(needs.pass-env.outputs.versions-windows-str) }}
-        py-version: ${{ fromJSON(needs.pass-env.outputs.py-versions-str) }}
-    runs-on: ${{ matrix.arch }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-      - uses: ./.github/actions/setup-mingw
-        with:
-          key-base: ${{ matrix.arch }}-py${{ matrix.py-version }}
-      - uses: actions/setup-python@v3
-        with:
           python-version: ${{ matrix.py-version }}
-      - uses: ./.github/actions/setup-poetry
-        with:
-          key-base: ${{ matrix.arch }}-py${{ matrix.py-version }}
-          use-pipx: false
-          use-specific-python-version: false
-      - run: make test
-      - uses: ./.github/actions/upload-artifacts
-        with:
-          make-binary: true
+          os-arch: ${{ matrix.arch }}
         if: ${{ fromJSON(needs.pass-env.outputs.is-from-tag-str) }}
   package-source:
     needs:
       - pass-env
       - build-linux
       - build-macos
-      - build-windows
     runs-on: ubuntu-latest
     if: ${{ fromJSON(needs.pass-env.outputs.is-from-tag-str) }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ fromJSON(needs.pass-env.outputs.py-versions-str)[0] }}
       - uses: ./.github/actions/setup-poetry
@@ -143,23 +118,24 @@ jobs:
       - uses: ./.github/actions/upload-artifacts
         with:
           make-binary: false
+          python-version: ${{ fromJSON(needs.pass-env.outputs.py-versions-str)[0] }}
+          os-arch: "source"
   upload-pypi:
     needs:
       - pass-env
       - build-linux
       - build-macos
-      - build-windows
       - package-source
     runs-on: ubuntu-latest
     if: ${{ fromJSON(needs.pass-env.outputs.is-from-tag-str) }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ fromJSON(needs.pass-env.outputs.py-versions-str)[0] }}
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
         with:
           path: dist
       - uses: ./.github/actions/setup-poetry
@@ -167,6 +143,12 @@ jobs:
           key-base: source_linux-py${{ fromJSON(needs.pass-env.outputs.py-versions-str)[0] }}
           use-pipx: false
           use-specific-python-version: false
+      - name: Collect all distribution files
+        shell: bash
+        run: |
+          mkdir -p dist/artifact
+          find dist -name '*.whl' -o -name '*.tar.gz' | xargs -I {} cp {} dist/artifact/
+          ls -la dist/artifact/
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__

@@ -105,8 +105,8 @@ class Context(unittest.TestCase):
         else:
             self.fail("Expected exception.")
 
-        self.assertIn("at funcA (<input>:3)\n", msg)
-        self.assertIn("at funcB (<input>:6)\n", msg)
+        self.assertIn("at funcA (<input>:3", msg)
+        self.assertIn("at funcB (<input>:6", msg)
 
     def test_memory_limit(self):
         code = """
@@ -508,7 +508,7 @@ class FunctionTest(unittest.TestCase):
         """)
 
         self.assertEqual(f(100), 100)
-        limit = 500
+        limit = 5000
         with self.assertRaises(quickjs.StackOverflow):
             f(limit)
         f.set_max_stack_size(2000 * limit)

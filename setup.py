@@ -7,6 +7,7 @@ from setuptools import setup, Extension
 CONFIG_VERSION = open("upstream-quickjs/VERSION").read().strip()
 extra_link_args: List[str] = []
 
+
 if sys.platform == "win32":
     # To build for Windows:
     # 1. Install MingW-W64-builds from https://mingw-w64.org/doku.php/download
@@ -16,7 +17,7 @@ if sys.platform == "win32":
     #    system PATH when compiling.
     # 3. The code below will moneky-patch distutils to work.
     import distutils.cygwinccompiler
-    distutils.cygwinccompiler.get_msvcr = lambda: [] 
+    distutils.cygwinccompiler.get_msvcr = lambda: []
     # Make sure that pthreads is linked statically, otherwise we run into problems
     # on computers where it is not installed.
     extra_link_args = ["-static"]
@@ -26,7 +27,7 @@ def get_c_sources(include_headers=False):
     sources = [
         "module.c",
         "upstream-quickjs/cutils.c",
-        "upstream-quickjs/libbf.c",
+        "upstream-quickjs/dtoa.c",
         "upstream-quickjs/libregexp.c",
         "upstream-quickjs/libunicode.c",
         "upstream-quickjs/quickjs.c",
@@ -34,7 +35,7 @@ def get_c_sources(include_headers=False):
     if include_headers:
         sources += [
             "upstream-quickjs/cutils.h",
-            "upstream-quickjs/libbf.h",
+            "upstream-quickjs/dtoa.h",
             "upstream-quickjs/libregexp-opcode.h",
             "upstream-quickjs/libregexp.h",
             "upstream-quickjs/libunicode-table.h",
@@ -71,11 +72,11 @@ setup(author="Petter Strandmark",
       author_email="petter.strandmark@gmail.com",
       maintainer="Quentin Wenger",
       maintainer_email="matpi@protonmail.ch",
-      name='quickjs',
-      url='https://github.com/PetterS/quickjs',
-      version='1.19.4',
+      name='quickjs-py',
+      url='https://github.com/yuikns/quickjs-py',  # Updated to actual project URL
+      version='1.20.0',
       license="MIT",
-      description='Wrapping the quickjs C library.',
+      description='Wrapping the quickjs C library. (Fork of PetterS/quickjs)',
       long_description=long_description,
       packages=["quickjs"],
       ext_modules=[_quickjs])

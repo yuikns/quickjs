@@ -8,6 +8,12 @@ inputs:
     default: false
   manylinux-target:
     required: false
+  python-version:
+    required: false
+    default: "unknown"
+  os-arch:
+    required: false
+    default: "unknown"
 
 runs:
   using: "composite"
@@ -21,13 +27,15 @@ runs:
     - run: find dist/*.whl | xargs auditwheel repair --plat=${{ inputs.manylinux-target }}
       shell: bash
       if: inputs.make-binary == 'true' && inputs.repair-manylinux == 'true'
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
+        name: manylinux-wheels-${{ inputs.manylinux-target }}-${{ inputs.python-version }}-${{ inputs.os-arch }}
         path: |
           wheelhouse/*.whl
       if: inputs.make-binary == 'true' && inputs.repair-manylinux == 'true'
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
+        name: python-package-${{ inputs.python-version }}-${{ inputs.os-arch }}
         path: |
           dist/*.tar.gz
           dist/*.whl

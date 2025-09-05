@@ -2,5 +2,6 @@ __pycache__
 build
 dist
 quickjs.egg-info
+quickjs_py.egg-info
 *.so
 *.pyd
